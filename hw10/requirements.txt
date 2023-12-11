@@ -1,0 +1,12 @@
+Flask
+google-api-core==2.12.0
+google-auth==2.23.3
+google-cloud-audit-log==0.2.5
+google-cloud-core==2.3.3
+google-cloud-logging==3.8.0
+google-cloud-pubsub==2.18.4
+google-cloud-storage==2.11.0
+pymysql
+sqlalchemy
+cloud-sql-python-connector[pymysql]
+urllib3==2.0.6

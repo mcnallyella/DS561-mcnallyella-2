@@ -1,0 +1,85 @@
+resources:
+
+- name: ds561-hw10-bucket
+  type: storage.v1.bucket
+  properties:
+    bucketName: ds561-hw10-bucket
+    location: us-central1
+    storageClass: STANDARD
+    iamPolicy:
+      bindings:
+        - role: roles/storage.admin
+          members:
+            - serviceAccount: ds561-hw10-serviceaccount@inner-fx-398918.iam.gserviceaccount.com
+
+- name: my-vm-instance
+  type: compute.beta.instance
+  properties:
+    zone: us-central1-a
+    machineType: zones/us-central1-a/machineTypes/n1-standard-1
+    tags:
+      items: 
+      - my-vm-instance
+    disks:
+    - deviceName: boot
+      type: PERSISTENT
+      boot: true
+      autoDelete: true
+      initializeParams:
+        sourceImage: projects/debian-cloud/global/images/debian-10-buster-v20231115
+    networkInterfaces:
+    - accessConfigs:
+      - name: External NAT
+        type: ONE_TO_ONE_NAT
+      network: global/networks/default
+    serviceAccounts:
+    - email: ds561-hw10-serviceaccount@inner-fx-398918.iam.gserviceaccount.com
+      scopes:
+      - https://www.googleapis.com/auth/cloud-platform
+      - https://www.googleapis.com/auth/sqlservice.admin
+    metadata:
+      items:
+      - key: startup-script
+        value: |
+          if [ -d "/root/ds561-hw10-bucket" ]; then
+              echo "Directory /root/ds561-hw10-bucket exists."
+          else
+              gsutil -m cp -r gs://ds561-hw10-bucket/ /root/
+              cd /root/ds561-hw10-bucket
+              apt install python3-pip -y
+              pip3 install -r requirements.txt
+              python3 main.py
+          fi
+
+- name: ds561hw10-firewall-rule
+  type: compute.v1.firewall
+  properties:
+    name: ds561hw10
+    allowed:
+    - IPProtocol: TCP
+      ports:
+      - '5000'
+    sourceTags:
+    - my-vm-instance
+    - ds561-hw10-bucket
+    sourceRanges:
+    - 0.0.0.0/0
+
+- name: ds561-hw10-sql
+  type: sqladmin.v1beta4.instance
+  properties:
+    tier: db-f1-micro
+    region: us-central1
+    databaseVersion: MYSQL_8_0
+    settings:
+      backupConfiguration:
+        enabled: true
+    serviceAccountEmailAddress: ds561-hw10-serviceaccount@inner-fx-398918.iam.gserviceaccount.com
+
+- name: ds561-hw10-database
+  type: sqladmin.v1beta4.database
+  properties:
+    instance: ds561-hw10-sql
+    name: my-database
+    charset: utf8
+    collation: utf8_general_ci
